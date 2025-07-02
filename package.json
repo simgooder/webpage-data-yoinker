@@ -1,0 +1,17 @@
+{
+  "name": "web-scraper-app",
+  "version": "1.0.0",
+  "description": "A simple web scraping application that targets elements by classname, ID, or regex.",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "axios": "^0.21.1",
+    "cheerio": "^1.0.0-rc.10",
+    "puppeteer": "^24.10.2"
+  },
+  "author": "",
+  "license": "ISC"
+}

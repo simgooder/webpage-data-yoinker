@@ -21,7 +21,7 @@
 ## Extract HREFs from a page
 ```
 (() => {
-  const links = Array.from(document.querySelectorAll('.card-title-link'))
+  const links = Array.from(document.querySelectorAll('.ih-item a'))
     .map(el => el.href.trim().replace(/\/$/, '').split('#')[0]) // normalize
     .filter(href => href);
 

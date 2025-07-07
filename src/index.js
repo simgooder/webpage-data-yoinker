@@ -18,13 +18,26 @@ const askQuestions = () => {
 
         rl.question('Enter targeting method (className, id, regex): ', async (targetMethod) => {
             if (targetMethod.toLowerCase() === 'regex') {
-                rl.question('Extract what? (email/facebook/custom): ', async (extractType) => {
+                rl.question('Extract what? (email/facebook/instagram/custom): ', async (extractType) => {
                     let regexOrSelector;
                     let useFacebook = false;
+                    let useInstagram = false;
+                    let linkIndex = 0;
+                    if (extractType.toLowerCase() === 'facebook' || extractType.toLowerCase() === 'instagram') {
+                        rl.question('Which instance? (1 for first, 2 for second, etc.): ', async (instanceInput) => {
+                            linkIndex = Math.max(0, parseInt(instanceInput) - 1 || 0);
+                            if (extractType.toLowerCase() === 'facebook') {
+                                useFacebook = true;
+                            } else {
+                                useInstagram = true;
+                            }
+                            await processScrape(webpages, targetMethod, regexOrSelector, useFacebook, useInstagram, linkIndex);
+                        });
+                        return;
+                    }
                     if (extractType.toLowerCase() === 'email') {
                         regexOrSelector = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
-                    } else if (extractType.toLowerCase() === 'facebook') {
-                        useFacebook = true;
+                        await processScrape(webpages, targetMethod, regexOrSelector, false, false, 0);
                     } else {
                         rl.question('Enter the custom regex (e.g. /pattern/flags): ', async (targetValue) => {
                             if (!targetValue) {
@@ -37,15 +50,13 @@ const askQuestions = () => {
                                     regexOrSelector = new RegExp(targetValue);
                                 }
                             }
-                            await processScrape(webpages, targetMethod, regexOrSelector, false);
+                            await processScrape(webpages, targetMethod, regexOrSelector, false, false, 0);
                         });
-                        return;
                     }
-                    await processScrape(webpages, targetMethod, regexOrSelector, useFacebook);
                 });
             } else {
                 rl.question('Enter the target value: ', async (targetValue) => {
-                    await processScrape(webpages, targetMethod, targetValue, false);
+                    await processScrape(webpages, targetMethod, targetValue, false, false);
                 });
             }
         });
@@ -53,7 +64,7 @@ const askQuestions = () => {
 };
 
 // Add processScrape function to handle the scraping logic
-async function processScrape(webpages, targetMethod, targetValue, useFacebook) {
+async function processScrape(webpages, targetMethod, targetValue, useFacebook, useInstagram, linkIndex = 0) {
     let results = [];
     try {
         for (let i = 0; i < webpages.length; i++) {
@@ -70,7 +81,9 @@ async function processScrape(webpages, targetMethod, targetValue, useFacebook) {
                     break;
                 case 'regex':
                     if (useFacebook) {
-                        res = await scraper.scrapeFacebookPageLink(url);
+                        res = await scraper.scrapeFacebookPageLink(url, linkIndex);
+                    } else if (useInstagram) {
+                        res = await scraper.scrapeInstagramPageLink(url, linkIndex);
                     } else {
                         res = await scraper.scrapeByRegexPuppeteer(url, targetValue);
                     }

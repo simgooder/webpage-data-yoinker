@@ -47,15 +47,16 @@ class Scraper {
         return text.match(regex) || [];
     }
 
-    async scrapeFacebookPageLink(url) {
+    async scrapeFacebookPageLink(url, index = 0) {
         const browser = await puppeteer.launch({ headless: true });
         const page = await browser.newPage();
         await page.goto(url, { waitUntil: 'networkidle2' });
-        // Find the first anchor with href containing 'facebook.com'
-        const fbUrl = await page.evaluate(() => {
-            const link = Array.from(document.querySelectorAll('a[href*="facebook.com"]'))[0];
+        // Find the Nth anchor with href containing 'facebook.com'
+        const fbUrl = await page.evaluate((idx) => {
+            const links = Array.from(document.querySelectorAll('a[href*="facebook.com"]'));
+            const link = links[idx];
             return link ? link.href : '';
-        });
+        }, index);
         await browser.close();
         return fbUrl ? [fbUrl] : [];
     }
@@ -76,6 +77,20 @@ class Scraper {
         });
         await browser.close();
         return emails;
+    }
+
+    async scrapeInstagramPageLink(url, index = 0) {
+        const browser = await puppeteer.launch({ headless: true });
+        const page = await browser.newPage();
+        await page.goto(url, { waitUntil: 'networkidle2' });
+        // Find the Nth anchor with href containing 'instagram.com'
+        const igUrl = await page.evaluate((idx) => {
+            const links = Array.from(document.querySelectorAll('a[href*="instagram.com"]'));
+            const link = links[idx];
+            return link ? link.href : '';
+        }, index);
+        await browser.close();
+        return igUrl ? [igUrl] : [];
     }
 }
 

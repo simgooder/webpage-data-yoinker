@@ -16,47 +16,39 @@ const askQuestions = () => {
     rl.question('Enter an array of webpages (comma-separated): ', async (webpagesInput) => {
         const webpages = webpagesInput.split(',').map(url => url.trim());
 
-        rl.question('Enter targeting method (className, id, regex): ', async (targetMethod) => {
-            if (targetMethod.toLowerCase() === 'regex') {
-                rl.question('Extract what? (email/facebook/instagram/custom): ', async (extractType) => {
-                    let regexOrSelector;
-                    let useFacebook = false;
-                    let useInstagram = false;
-                    let linkIndex = 0;
-                    if (extractType.toLowerCase() === 'facebook' || extractType.toLowerCase() === 'instagram') {
-                        rl.question('Which instance? (1 for first, 2 for second, etc.): ', async (instanceInput) => {
-                            linkIndex = Math.max(0, parseInt(instanceInput) - 1 || 0);
-                            if (extractType.toLowerCase() === 'facebook') {
-                                useFacebook = true;
-                            } else {
-                                useInstagram = true;
-                            }
-                            await processScrape(webpages, targetMethod, regexOrSelector, useFacebook, useInstagram, linkIndex);
-                        });
-                        return;
-                    }
-                    if (extractType.toLowerCase() === 'email') {
-                        regexOrSelector = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
-                        await processScrape(webpages, targetMethod, regexOrSelector, false, false, 0);
+        rl.question('Extract what? (email/facebook/instagram/custom): ', async (extractType) => {
+            let regexOrSelector;
+            let useFacebook = false;
+            let useInstagram = false;
+            let linkIndex = 0;
+            if (extractType.toLowerCase() === 'facebook' || extractType.toLowerCase() === 'instagram') {
+                rl.question('Which instance? (1 for first, 2 for second, etc.): ', async (instanceInput) => {
+                    linkIndex = Math.max(0, parseInt(instanceInput) - 1 || 0);
+                    if (extractType.toLowerCase() === 'facebook') {
+                        useFacebook = true;
                     } else {
-                        rl.question('Enter the custom regex (e.g. /pattern/flags): ', async (targetValue) => {
-                            if (!targetValue) {
-                                regexOrSelector = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
-                            } else if (typeof targetValue === 'string') {
-                                const match = targetValue.match(/^\/(.*)\/(.*)?$/);
-                                if (match) {
-                                    regexOrSelector = new RegExp(match[1], match[2] || undefined);
-                                } else {
-                                    regexOrSelector = new RegExp(targetValue);
-                                }
-                            }
-                            await processScrape(webpages, targetMethod, regexOrSelector, false, false, 0);
-                        });
+                        useInstagram = true;
                     }
+                    await processScrape(webpages, 'regex', regexOrSelector, useFacebook, useInstagram, linkIndex);
                 });
+                return;
+            }
+            if (extractType.toLowerCase() === 'email') {
+                regexOrSelector = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+                await processScrape(webpages, 'regex', regexOrSelector, false, false, 0);
             } else {
-                rl.question('Enter the target value: ', async (targetValue) => {
-                    await processScrape(webpages, targetMethod, targetValue, false, false);
+                rl.question('Enter the custom regex (e.g. /pattern/flags): ', async (targetValue) => {
+                    if (!targetValue) {
+                        regexOrSelector = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+                    } else if (typeof targetValue === 'string') {
+                        const match = targetValue.match(/^\/(.*)\/(.*)?$/);
+                        if (match) {
+                            regexOrSelector = new RegExp(match[1], match[2] || undefined);
+                        } else {
+                            regexOrSelector = new RegExp(targetValue);
+                        }
+                    }
+                    await processScrape(webpages, 'regex', regexOrSelector, false, false, 0);
                 });
             }
         });
@@ -71,33 +63,37 @@ async function processScrape(webpages, targetMethod, targetValue, useFacebook, u
             const url = webpages[i];
             console.log(`Scraping ${i + 1}/${webpages.length}: ${url}`);
             let res;
-            switch (targetMethod.toLowerCase()) {
-                case 'classname':
-                    // Use Puppeteer for className to support JS-rendered content
-                    res = await scraper.scrapeByClassNamePuppeteer(url, targetValue);
-                    break;
-                case 'id':
-                    res = await scraper.scrapeById(url, targetValue);
-                    break;
-                case 'regex':
-                    if (useFacebook) {
-                        res = await scraper.scrapeFacebookPageLink(url, linkIndex);
-                    } else if (useInstagram) {
-                        res = await scraper.scrapeInstagramPageLink(url, linkIndex);
-                    } else {
-                        res = await scraper.scrapeByRegexPuppeteer(url, targetValue);
-                    }
-                    break;
-                default:
-                    console.log('Invalid targeting method. Please use className, id, or regex.');
-                    rl.close();
-                    return;
-            }
-            if (Array.isArray(res) && res.length > 0) {
-                results.push({ url, value: res[0] });
-            } else if (!Array.isArray(res) && res) {
-                results.push({ url, value: res });
-            } else {
+            try {
+                switch (targetMethod.toLowerCase()) {
+                    case 'classname':
+                        res = await scraper.scrapeByClassNamePuppeteer(url, targetValue);
+                        break;
+                    case 'id':
+                        res = await scraper.scrapeById(url, targetValue);
+                        break;
+                    case 'regex':
+                        if (useFacebook) {
+                            res = await scraper.scrapeFacebookPageLink(url, linkIndex);
+                        } else if (useInstagram) {
+                            res = await scraper.scrapeInstagramPageLink(url, linkIndex);
+                        } else {
+                            res = await scraper.scrapeByRegexPuppeteer(url, targetValue);
+                        }
+                        break;
+                    default:
+                        console.log('Invalid targeting method. Please use className, id, or regex.');
+                        rl.close();
+                        return;
+                }
+                if (Array.isArray(res) && res.length > 0) {
+                    results.push({ url, value: res[0] });
+                } else if (!Array.isArray(res) && res) {
+                    results.push({ url, value: res });
+                } else {
+                    results.push({ url, value: '' });
+                }
+            } catch (err) {
+                console.log(`Skipping ${url} due to issue: ${err.message}`);
                 results.push({ url, value: '' });
             }
         }
